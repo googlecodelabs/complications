@@ -1,1 +1,1 @@
-include ':1-base', ':complete', ':2-receive-data', ':3-choose-data', ':4-render-complications', ':5-enable-tap'
+include ':1-base', ':2-receive-data', ':3-choose-data', ':4-render-complications', ':5-enable-tap', ':complete'
