@@ -17,6 +17,7 @@ package com.example.android.wearable.complications;
 
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -33,6 +34,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.support.wearable.complications.ComplicationData;
+import android.support.wearable.complications.ComplicationHelperActivity;
 import android.support.wearable.complications.ComplicationText;
 import android.support.wearable.watchface.CanvasWatchFaceService;
 import android.support.wearable.watchface.WatchFaceStyle;
@@ -287,19 +289,38 @@ public class ComplicationWatchFaceService extends CanvasWatchFaceService {
             return -1;
         }
 
+        // Fires PendingIntent associated with complication (if it has one).
         private void onComplicationTap(int complicationId) {
-            Log.d(TAG, "onComplicationTap()");
             // TODO: Step 5, onComplicationTap()
+            Log.d(TAG, "onComplicationTap()");
+
             ComplicationData complicationData =
                     mActiveComplicationDataSparseArray.get(complicationId);
 
-            if ((complicationData != null) && (complicationData.getTapAction() != null)) {
-                try {
-                    complicationData.getTapAction().send();
-                } catch (PendingIntent.CanceledException e) {
-                    Log.d(TAG, "On complication tap action error " + e);
+            if (complicationData != null) {
+
+                if (complicationData.getTapAction() != null) {
+                    try {
+                        complicationData.getTapAction().send();
+                    } catch (PendingIntent.CanceledException e) {
+                        Log.e(TAG, "onComplicationTap() tap action error: " + e);
+                    }
+
+                } else if (complicationData.getType() == ComplicationData.TYPE_NO_PERMISSION) {
+
+                    // Watch face does not have permission to receive complication data, so launch
+                    // permission request.
+                    ComponentName componentName = new ComponentName(
+                            getApplicationContext(),
+                            ComplicationWatchFaceService.class);
+
+                    Intent permissionRequestIntent =
+                            ComplicationHelperActivity.createPermissionRequestHelperIntent(
+                                    getApplicationContext(), componentName);
+
+                    startActivity(permissionRequestIntent);
                 }
-                invalidate();
+
             } else {
                 Log.d(TAG, "No PendingIntent for complication " + complicationId + ".");
             }

@@ -233,6 +233,7 @@ public class ComplicationWatchFaceService extends CanvasWatchFaceService {
 
         @Override
         public void onTapCommand(int tapType, int x, int y, long eventTime) {
+            // TODO: Step 5, OnTapCommand()
             Log.d(TAG, "OnTapCommand()");
             switch (tapType) {
                 case TAP_TYPE_TAP:
@@ -297,8 +298,8 @@ public class ComplicationWatchFaceService extends CanvasWatchFaceService {
 
         // Fires PendingIntent associated with complication (if it has one).
         private void onComplicationTap(int complicationId) {
+            // TODO: Step 5, onComplicationTap()
             Log.d(TAG, "onComplicationTap()");
-
 
             ComplicationData complicationData =
                     mActiveComplicationDataSparseArray.get(complicationId);
