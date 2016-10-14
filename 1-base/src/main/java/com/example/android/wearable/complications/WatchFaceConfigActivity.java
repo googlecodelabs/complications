@@ -22,7 +22,7 @@ import android.content.Intent;
 import android.content.res.TypedArray;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
-import android.support.wearable.complications.ProviderChooserIntent;
+import android.support.wearable.complications.ComplicationHelperActivity;
 import android.support.wearable.view.WearableListView;
 import android.util.Log;
 import android.view.LayoutInflater;
