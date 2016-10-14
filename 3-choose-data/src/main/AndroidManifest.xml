@@ -21,8 +21,10 @@
     <uses-feature android:name="android.hardware.type.watch"/>
 
     <!-- Required to act as a custom watch face. -->
-    <uses-permission android:name="com.google.android.permission.PROVIDE_BACKGROUND" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!--  TODO: Step 2, receiveComplicationData -->
+    <uses-permission
+        android:name="com.google.android.wearable.permission.RECEIVE_COMPLICATION_DATA" />
 
     <application
         android:allowBackup="true"
@@ -56,6 +58,9 @@
                 <category android:name="com.google.android.wearable.watchface.category.WATCH_FACE" />
             </intent-filter>
         </service>
+
+        <!-- TODO: Step 3, addHelperActivity -->
+        <activity android:name="android.support.wearable.complications.ComplicationHelperActivity"/>
 
         <activity
             android:name=".WatchFaceConfigActivity"
