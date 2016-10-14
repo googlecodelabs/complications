@@ -425,6 +425,7 @@ public class ComplicationWatchFaceService extends CanvasWatchFaceService {
         }
 
         private void drawComplications(Canvas canvas, long currentTimeMillis) {
+            // TODO: Step 4, drawComplications()
             ComplicationData complicationData;
 
             for (int i = 0; i < COMPLICATION_IDS.length; i++) {
@@ -458,7 +459,6 @@ public class ComplicationWatchFaceService extends CanvasWatchFaceService {
                                     subText.getText(getApplicationContext(), currentTimeMillis));
                         }
 
-                        //Log.d(TAG, "Com id: " + COMPLICATION_IDS[i] + "\t" + complicationMessage);
                         double textWidth =
                                 mComplicationPaint.measureText(
                                         complicationMessage,

@@ -388,45 +388,52 @@ public class ComplicationWatchFaceService extends CanvasWatchFaceService {
                 complicationData = mActiveComplicationDataSparseArray.get(COMPLICATION_IDS[i]);
 
                 if ((complicationData != null)
-                        && (complicationData.isActive(currentTimeMillis))
-                        && (complicationData.getType() == ComplicationData.TYPE_SHORT_TEXT)) {
+                        && (complicationData.isActive(currentTimeMillis))) {
 
-                    ComplicationText mainText = complicationData.getShortText();
-                    ComplicationText subText = complicationData.getShortTitle();
+                    if (complicationData.getType() == ComplicationData.TYPE_SHORT_TEXT
+                            || complicationData.getType() == ComplicationData.TYPE_NO_PERMISSION) {
 
-                    CharSequence complicationMessage =
-                            mainText.getText(getApplicationContext(), currentTimeMillis);
+                        ComplicationText mainText = complicationData.getShortText();
+                        ComplicationText subText = complicationData.getShortTitle();
 
-                    if (subText != null) {
-                        complicationMessage = TextUtils.concat(
-                                complicationMessage,
-                                " ",
-                                subText.getText(getApplicationContext(), currentTimeMillis));
-                    }
+                        CharSequence complicationMessage =
+                                mainText.getText(getApplicationContext(), currentTimeMillis);
 
-                    double textWidth =
-                            mComplicationPaint.measureText(
+                        /* In most cases you would want the subText (Title) under the
+                         * mainText (Text), but to keep it simple for the code lab, we are
+                         * concatenating them all on one line.
+                         */
+                        if (subText != null) {
+                            complicationMessage = TextUtils.concat(
                                     complicationMessage,
-                                    0,
-                                    complicationMessage.length());
+                                    " ",
+                                    subText.getText(getApplicationContext(), currentTimeMillis));
+                        }
 
-                    int complicationsX;
+                        double textWidth =
+                                mComplicationPaint.measureText(
+                                        complicationMessage,
+                                        0,
+                                        complicationMessage.length());
 
-                    if (COMPLICATION_IDS[i] == LEFT_DIAL_COMPLICATION) {
-                        complicationsX = (int) ((mWidth / 2) - textWidth) / 2;
-                    } else {
-                        // RIGHT_DIAL_COMPLICATION calculations
-                        int offset = (int) ((mWidth / 2) - textWidth) / 2;
-                        complicationsX = (mWidth / 2) + offset;
+                        int complicationsX;
+
+                        if (COMPLICATION_IDS[i] == LEFT_DIAL_COMPLICATION) {
+                            complicationsX = (int) ((mWidth / 2) - textWidth) / 2;
+                        } else {
+                            // RIGHT_DIAL_COMPLICATION calculations
+                            int offset = (int) ((mWidth / 2) - textWidth) / 2;
+                            complicationsX = (mWidth / 2) + offset;
+                        }
+
+                        canvas.drawText(
+                                complicationMessage,
+                                0,
+                                complicationMessage.length(),
+                                complicationsX,
+                                mComplicationsY,
+                                mComplicationPaint);
                     }
-
-                    canvas.drawText(
-                            complicationMessage,
-                            0,
-                            complicationMessage.length(),
-                            complicationsX,
-                            mComplicationsY,
-                            mComplicationPaint);
                 }
             }
         }
