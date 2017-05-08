@@ -1,0 +1,22 @@
+This directory should contain any pre-release libraries needed for
+this Early Access build.
+
+If a m2repository directory is provided, it will contain a maven
+structure which includes versioned library artifacts within it. To
+depend on these libraries, first update the top level gradle build
+file in your project to detect this maven repository by adding the
+maven block as shown in the following, updating the relative path as
+necessary:
+
+allprojects {
+    repositories {
+        maven {
+            /* Reference the EAP maven repository location */
+            url new File(rootDir, "../../preview/libs/m2repository")
+        }
+        jcenter()
+    }
+}
+
+You can then add dependencies to the pre-release libraries like normal
+in gradle dependency blocks.

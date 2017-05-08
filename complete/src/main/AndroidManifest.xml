@@ -36,6 +36,17 @@
         android:theme="@android:style/Theme.DeviceDefault"
         tools:ignore="MissingApplicationIcon">
 
+        <meta-data
+            android:name="com.google.android.wearable.standalone"
+            android:value="true"/>
+        <meta-data
+            android:name="com.google.android.gms.version"
+            android:value="@integer/google_play_services_version"/>
+
+        <uses-library
+            android:name="com.google.android.wearable"
+            android:required="false"/>
+
         <service
             android:name=".ComplicationWatchFaceService"
             android:label="@string/complication_watch_face_name"
@@ -77,11 +88,6 @@
                 <category android:name="android.intent.category.DEFAULT"/>
             </intent-filter>
         </activity>
-
-        <meta-data
-            android:name="com.google.android.gms.version"
-            android:value="@integer/google_play_services_version" />
-
     </application>
 
 </manifest>
