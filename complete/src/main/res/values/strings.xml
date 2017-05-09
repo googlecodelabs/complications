@@ -16,6 +16,4 @@
   -->
 <resources>
     <string name="app_name">Complications Codelab</string>
-    <string name="complication_watch_face_name">Complications Codelab</string>
-    <string name="watch_face_config_name">Configurations</string>
 </resources>

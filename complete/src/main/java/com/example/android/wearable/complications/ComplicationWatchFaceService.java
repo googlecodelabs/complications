@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 The Android Open Source Project
+ * Copyright (C) 2017 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,24 +21,18 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.ColorMatrix;
-import android.graphics.ColorMatrixColorFilter;
 import android.graphics.Paint;
 import android.graphics.Rect;
-import android.graphics.Typeface;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.support.wearable.complications.ComplicationData;
 import android.support.wearable.complications.ComplicationHelperActivity;
-import android.support.wearable.complications.ComplicationText;
+import android.support.wearable.complications.rendering.ComplicationDrawable;
 import android.support.wearable.watchface.CanvasWatchFaceService;
 import android.support.wearable.watchface.WatchFaceStyle;
-import android.text.TextUtils;
 import android.util.Log;
 import android.util.SparseArray;
 import android.view.SurfaceHolder;
@@ -47,23 +41,62 @@ import java.util.Calendar;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 
-/**
- * Watch Face for "Adding Complications to your Watch Face" code lab.
- */
+/** Watch Face for "Adding Complications to your Watch Face" code lab. */
 public class ComplicationWatchFaceService extends CanvasWatchFaceService {
 
     private static final String TAG = "ComplicationWatchFace";
 
-    private static final int LEFT_DIAL_COMPLICATION = 0;
-    private static final int RIGHT_DIAL_COMPLICATION = 1;
+    private static final int LEFT_COMPLICATION_ID = 0;
+    private static final int RIGHT_COMPLICATION_ID = 1;
 
-    public static final int[] COMPLICATION_IDS = {LEFT_DIAL_COMPLICATION, RIGHT_DIAL_COMPLICATION};
+    private static final int[] COMPLICATION_IDS = {LEFT_COMPLICATION_ID, RIGHT_COMPLICATION_ID};
 
     // Left and right dial supported types.
-    public static final int[][] COMPLICATION_SUPPORTED_TYPES = {
-            {ComplicationData.TYPE_SHORT_TEXT},
-            {ComplicationData.TYPE_SHORT_TEXT}
+    private static final int[][] COMPLICATION_SUPPORTED_TYPES = {
+        {
+            ComplicationData.TYPE_RANGED_VALUE,
+            ComplicationData.TYPE_ICON,
+            ComplicationData.TYPE_SHORT_TEXT,
+            ComplicationData.TYPE_SMALL_IMAGE
+        },
+        {
+            ComplicationData.TYPE_RANGED_VALUE,
+            ComplicationData.TYPE_ICON,
+            ComplicationData.TYPE_SHORT_TEXT,
+            ComplicationData.TYPE_SMALL_IMAGE
+        }
     };
+
+    // Used by {@link ComplicationConfigActivity} to retrieve id for complication locations and
+    // to check if complication location is supported.
+    static int getComplicationId(
+            ComplicationConfigActivity.ComplicationLocation complicationLocation) {
+        // Add any other supported locations here you would like to support. In our case, we are
+        // only supporting a left and right complication.
+        switch (complicationLocation) {
+            case LEFT:
+                return LEFT_COMPLICATION_ID;
+            case RIGHT:
+                return RIGHT_COMPLICATION_ID;
+            default:
+                return -1;
+        }
+    }
+
+    // Used by {@link ComplicationConfigActivity} to retrieve complication types supported by
+    // location.
+    static int[] getSupportedComplicationTypes(
+            ComplicationConfigActivity.ComplicationLocation complicationLocation) {
+        // Add any other supported locations here.
+        switch (complicationLocation) {
+            case LEFT:
+                return COMPLICATION_SUPPORTED_TYPES[0];
+            case RIGHT:
+                return COMPLICATION_SUPPORTED_TYPES[1];
+            default:
+                return new int[] {};
+        }
+    }
 
     /*
      * Update rate in milliseconds for interactive mode. We update once a second to advance the
@@ -77,44 +110,27 @@ public class ComplicationWatchFaceService extends CanvasWatchFaceService {
     }
 
     private class Engine extends CanvasWatchFaceService.Engine {
+        private static final int MSG_UPDATE_TIME = 0;
 
-        private boolean mRegisteredTimeZoneReceiver = false;
-
-        private static final float COMPLICATION_TEXT_SIZE = 38f;
-        private static final int COMPLICATION_TAP_BUFFER = 40;
-
-        private static final float HAND_END_CAP_RADIUS = 4f;
-        private static final float STROKE_WIDTH = 4f;
+        private static final float HOUR_AND_MINUTE_STROKE_WIDTH = 5f;
+        private static final float SECOND_TICK_STROKE_WIDTH = 2f;
+        private static final float CENTER_GAP_AND_CIRCLE_RADIUS = 4f;
         private static final int SHADOW_RADIUS = 6;
 
         private Calendar mCalendar;
+        private boolean mRegisteredTimeZoneReceiver = false;
 
-        // Variables for painting Background
-        private Paint mBackgroundPaint;
-        private Bitmap mBackgroundBitmap;
-        private Bitmap mGrayBackgroundBitmap;
+        private float mCenterX;
+        private float mCenterY;
 
-        // Variables for painting Complications
-        private Paint mComplicationPaint;
-
-        /* To properly place each complication, we need their x and y coordinates. While the width
-         * may change from moment to moment based on the time, the height will not change, so we
-         * store it as a local variable and only calculate it only when the surface changes
-         * (onSurfaceChanged()).
-         */
-        private int mComplicationsY;
-
-        /* Maps active complication ids to the data for that complication. Note: Data will only be
-         * present if the user has chosen a provider via the settings activity for the watch face.
-         */
-        private SparseArray<ComplicationData> mActiveComplicationDataSparseArray;
-
-
-        // Watch Face Hand related objects
-        private Paint mHandPaint;
         private float mHourHandLength;
         private float mMinuteHandLength;
         private float mSecondHandLength;
+
+        private Paint mHourMinuteTicksHandPaint;
+        private Paint mSecondHandPaint;
+
+        private Paint mBackgroundPaint;
 
         private boolean mAmbient;
 
@@ -130,46 +146,53 @@ public class ComplicationWatchFaceService extends CanvasWatchFaceService {
          */
         private boolean mBurnInProtection;
 
-        private int mWidth;
-        private int mHeight;
-        private float mCenterX;
-        private float mCenterY;
-        private float mScale = 1;
+        /* Maps active complication ids to the data for that complication. Note: Data will only be
+         * present if the user has chosen a provider via the settings activity for the watch face.
+         */
+        private SparseArray<ComplicationData> mActiveComplicationDataSparseArray;
+
+        /* Maps complication ids to corresponding ComplicationDrawable that renders the
+         * the complication data on the watch face.
+         */
+        private SparseArray<ComplicationDrawable> mComplicationDrawableSparseArray;
+
+        private final BroadcastReceiver mTimeZoneReceiver =
+                new BroadcastReceiver() {
+                    @Override
+                    public void onReceive(Context context, Intent intent) {
+                        mCalendar.setTimeZone(TimeZone.getDefault());
+                        invalidate();
+                    }
+                };
 
         // Handler to update the time once a second in interactive mode.
-        private final Handler mUpdateTimeHandler = new Handler() {
-            @Override
-            public void handleMessage(Message message) {
-                if (R.id.message_update == message.what) {
-                    invalidate();
-                    if (shouldTimerBeRunning()) {
-                        long timeMs = System.currentTimeMillis();
-                        long delayMs = INTERACTIVE_UPDATE_RATE_MS
-                                - (timeMs % INTERACTIVE_UPDATE_RATE_MS);
-                        mUpdateTimeHandler.sendEmptyMessageDelayed(R.id.message_update, delayMs);
-                    }
-                }
-            }
-        };
+        private final Handler mUpdateTimeHandler =
+                new Handler() {
+                    @Override
+                    public void handleMessage(Message message) {
 
-        private final BroadcastReceiver mTimeZoneReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                mCalendar.setTimeZone(TimeZone.getDefault());
-                invalidate();
-            }
-        };
+                        if (Log.isLoggable(TAG, Log.DEBUG)) {
+                            Log.d(TAG, "updating time");
+                        }
+                        invalidate();
+                        if (shouldTimerBeRunning()) {
+                            long timeMs = System.currentTimeMillis();
+                            long delayMs =
+                                    INTERACTIVE_UPDATE_RATE_MS
+                                            - (timeMs % INTERACTIVE_UPDATE_RATE_MS);
+                            mUpdateTimeHandler.sendEmptyMessageDelayed(MSG_UPDATE_TIME, delayMs);
+                        }
+                    }
+                };
 
         @Override
         public void onCreate(SurfaceHolder holder) {
             super.onCreate(holder);
 
-            setWatchFaceStyle(new WatchFaceStyle.Builder(ComplicationWatchFaceService.this)
-                    .setCardPeekMode(WatchFaceStyle.PEEK_MODE_SHORT)
-                    .setAcceptsTapEvents(true)
-                    .setBackgroundVisibility(WatchFaceStyle.BACKGROUND_VISIBILITY_INTERRUPTIVE)
-                    .setShowSystemUiTime(false)
-                    .build());
+            setWatchFaceStyle(
+                    new WatchFaceStyle.Builder(ComplicationWatchFaceService.this)
+                            .setAcceptsTapEvents(true)
+                            .build());
 
             mCalendar = Calendar.getInstance();
 
@@ -183,9 +206,6 @@ public class ComplicationWatchFaceService extends CanvasWatchFaceService {
         private void initializeBackground() {
             mBackgroundPaint = new Paint();
             mBackgroundPaint.setColor(Color.BLACK);
-
-            final int backgroundResId = R.drawable.custom_background;
-            mBackgroundBitmap = BitmapFactory.decodeResource(getResources(), backgroundResId);
         }
 
         private void initializeComplications() {
@@ -193,29 +213,65 @@ public class ComplicationWatchFaceService extends CanvasWatchFaceService {
 
             mActiveComplicationDataSparseArray = new SparseArray<>(COMPLICATION_IDS.length);
 
-            mComplicationPaint = new Paint();
-            mComplicationPaint.setColor(Color.WHITE);
-            mComplicationPaint.setTextSize(COMPLICATION_TEXT_SIZE);
-            mComplicationPaint.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
-            mComplicationPaint.setAntiAlias(true);
+            // Creates a ComplicationDrawable for each location where the user can render a
+            // complication on the watch face. In this watch face, we only create left and right,
+            // but you could add many more.
+            // All styles for the complications are defined in
+            // drawable/custom_complication_styles.xml.
+            ComplicationDrawable leftComplicationDrawable =
+                    (ComplicationDrawable) getDrawable(R.drawable.custom_complication_styles);
+            leftComplicationDrawable.setContext(getApplicationContext());
+
+            ComplicationDrawable rightComplicationDrawable =
+                    (ComplicationDrawable) getDrawable(R.drawable.custom_complication_styles);
+            rightComplicationDrawable.setContext(getApplicationContext());
+
+            // Adds new complications to a SparseArray to simplify setting styles and ambient
+            // properties for all complications, i.e., iterate over them all.
+            mComplicationDrawableSparseArray = new SparseArray<>(COMPLICATION_IDS.length);
+            mComplicationDrawableSparseArray.put(LEFT_COMPLICATION_ID, leftComplicationDrawable);
+            mComplicationDrawableSparseArray.put(RIGHT_COMPLICATION_ID, rightComplicationDrawable);
 
             setActiveComplications(COMPLICATION_IDS);
         }
 
         private void initializeHands() {
-            mHandPaint = new Paint();
-            mHandPaint.setColor(Color.WHITE);
-            mHandPaint.setStrokeWidth(STROKE_WIDTH);
-            mHandPaint.setAntiAlias(true);
-            mHandPaint.setStrokeCap(Paint.Cap.ROUND);
-            mHandPaint.setShadowLayer(SHADOW_RADIUS, 0, 0, Color.BLACK);
-            mHandPaint.setStyle(Paint.Style.STROKE);
+            mHourMinuteTicksHandPaint = new Paint();
+            mHourMinuteTicksHandPaint.setColor(Color.WHITE);
+            mHourMinuteTicksHandPaint.setStrokeWidth(HOUR_AND_MINUTE_STROKE_WIDTH);
+            mHourMinuteTicksHandPaint.setAntiAlias(true);
+            mHourMinuteTicksHandPaint.setStrokeCap(Paint.Cap.ROUND);
+            mHourMinuteTicksHandPaint.setShadowLayer(SHADOW_RADIUS, 0, 0, Color.BLACK);
+
+            mSecondHandPaint = new Paint();
+            mSecondHandPaint.setColor(Color.RED);
+            mSecondHandPaint.setStrokeWidth(SECOND_TICK_STROKE_WIDTH);
+            mSecondHandPaint.setAntiAlias(true);
+            mSecondHandPaint.setStrokeCap(Paint.Cap.ROUND);
+            mSecondHandPaint.setShadowLayer(SHADOW_RADIUS, 0, 0, Color.BLACK);
         }
 
         @Override
         public void onDestroy() {
-            mUpdateTimeHandler.removeMessages(R.id.message_update);
+            mUpdateTimeHandler.removeMessages(MSG_UPDATE_TIME);
             super.onDestroy();
+        }
+
+        @Override
+        public void onPropertiesChanged(Bundle properties) {
+            mLowBitAmbient = properties.getBoolean(PROPERTY_LOW_BIT_AMBIENT, false);
+            mBurnInProtection = properties.getBoolean(PROPERTY_BURN_IN_PROTECTION, false);
+
+            // Updates complications to properly render in ambient mode based on the
+            // screen's capabilities.
+            ComplicationDrawable complicationDrawable;
+
+            for (int i = 0; i < COMPLICATION_IDS.length; i++) {
+                complicationDrawable = mComplicationDrawableSparseArray.get(COMPLICATION_IDS[i]);
+
+                complicationDrawable.setLowBitAmbient(mLowBitAmbient);
+                complicationDrawable.setBurnInProtection(mBurnInProtection);
+            }
         }
 
         /*
@@ -228,6 +284,13 @@ public class ComplicationWatchFaceService extends CanvasWatchFaceService {
 
             // Adds/updates active complication data in the array.
             mActiveComplicationDataSparseArray.put(complicationId, complicationData);
+
+            // Updates correct ComplicationDrawable with updated data.
+            ComplicationDrawable complicationDrawable =
+                    mComplicationDrawableSparseArray.get(complicationId);
+            complicationDrawable.setComplicationData(complicationData);
+
+
             invalidate();
         }
 
@@ -249,44 +312,28 @@ public class ComplicationWatchFaceService extends CanvasWatchFaceService {
          * Determines if tap inside a complication area or returns -1.
          */
         private int getTappedComplicationId(int x, int y) {
+
+            int complicationId;
             ComplicationData complicationData;
+            ComplicationDrawable complicationDrawable;
+
             long currentTimeMillis = System.currentTimeMillis();
 
             for (int i = 0; i < COMPLICATION_IDS.length; i++) {
-                complicationData = mActiveComplicationDataSparseArray.get(COMPLICATION_IDS[i]);
+                complicationId = COMPLICATION_IDS[i];
+                complicationData = mActiveComplicationDataSparseArray.get(complicationId);
 
                 if ((complicationData != null)
                         && (complicationData.isActive(currentTimeMillis))
                         && (complicationData.getType() != ComplicationData.TYPE_NOT_CONFIGURED)
                         && (complicationData.getType() != ComplicationData.TYPE_EMPTY)) {
 
-                    Rect complicationBoundingRect = new Rect(0, 0, 0, 0);
-
-                    switch (COMPLICATION_IDS[i]) {
-                        case LEFT_DIAL_COMPLICATION:
-                            complicationBoundingRect.set(
-                                    0,                                          // left
-                                    mComplicationsY - COMPLICATION_TAP_BUFFER,  // top
-                                    (mWidth / 2),                               // right
-                                    ((int) COMPLICATION_TEXT_SIZE               // bottom
-                                            + mComplicationsY
-                                            + COMPLICATION_TAP_BUFFER));
-                            break;
-
-                        case RIGHT_DIAL_COMPLICATION:
-                            complicationBoundingRect.set(
-                                    (mWidth / 2),                               // left
-                                    mComplicationsY - COMPLICATION_TAP_BUFFER,  // top
-                                    mWidth,                                     // right
-                                    ((int) COMPLICATION_TEXT_SIZE
-                                            + mComplicationsY
-                                            + COMPLICATION_TAP_BUFFER));
-                            break;
-                    }
+                    complicationDrawable = mComplicationDrawableSparseArray.get(complicationId);
+                    Rect complicationBoundingRect = complicationDrawable.getBounds();
 
                     if (complicationBoundingRect.width() > 0) {
                         if (complicationBoundingRect.contains(x, y)) {
-                            return COMPLICATION_IDS[i];
+                            return complicationId;
                         }
                     } else {
                         Log.e(TAG, "Not a recognized complication id.");
@@ -317,9 +364,9 @@ public class ComplicationWatchFaceService extends CanvasWatchFaceService {
 
                     // Watch face does not have permission to receive complication data, so launch
                     // permission request.
-                    ComponentName componentName = new ComponentName(
-                            getApplicationContext(),
-                            ComplicationWatchFaceService.class);
+                    ComponentName componentName =
+                            new ComponentName(
+                                    getApplicationContext(), ComplicationWatchFaceService.class);
 
                     Intent permissionRequestIntent =
                             ComplicationHelperActivity.createPermissionRequestHelperIntent(
@@ -334,13 +381,6 @@ public class ComplicationWatchFaceService extends CanvasWatchFaceService {
         }
 
         @Override
-        public void onPropertiesChanged(Bundle properties) {
-            super.onPropertiesChanged(properties);
-            mLowBitAmbient = properties.getBoolean(PROPERTY_LOW_BIT_AMBIENT, false);
-            mBurnInProtection = properties.getBoolean(PROPERTY_BURN_IN_PROTECTION, false);
-        }
-
-        @Override
         public void onTimeTick() {
             super.onTimeTick();
             invalidate();
@@ -349,68 +389,102 @@ public class ComplicationWatchFaceService extends CanvasWatchFaceService {
         @Override
         public void onAmbientModeChanged(boolean inAmbientMode) {
             super.onAmbientModeChanged(inAmbientMode);
-            if (mAmbient != inAmbientMode) {
-                mAmbient = inAmbientMode;
-                if (mLowBitAmbient || mBurnInProtection) {
-                    mHandPaint.setAntiAlias(!inAmbientMode);
-                    mComplicationPaint.setAntiAlias(!inAmbientMode);
-                }
-                invalidate();
+
+            mAmbient = inAmbientMode;
+
+            updateWatchHandStyles();
+
+            // Update drawable complications' ambient state.
+            // Note: ComplicationDrawable handles switching between active/ambient colors, we just
+            // have to inform it to enter ambient mode.
+            ComplicationDrawable complicationDrawable;
+
+            for (int i = 0; i < COMPLICATION_IDS.length; i++) {
+                complicationDrawable = mComplicationDrawableSparseArray.get(COMPLICATION_IDS[i]);
+                complicationDrawable.setInAmbientMode(mAmbient);
             }
 
-            /*
-             * Whether the timer should be running depends on whether we're visible (as well as
-             * whether we're in ambient mode), so we may need to start or stop the timer.
-             */
+            // Check and trigger whether or not timer should be running (only in active mode).
             updateTimer();
+        }
+
+        private void updateWatchHandStyles() {
+
+            if (mAmbient) {
+                mHourMinuteTicksHandPaint.setAntiAlias(false);
+                mHourMinuteTicksHandPaint.clearShadowLayer();
+
+                mSecondHandPaint.setAntiAlias(false);
+                mSecondHandPaint.clearShadowLayer();
+            } else {
+
+                mHourMinuteTicksHandPaint.setAntiAlias(true);
+                mHourMinuteTicksHandPaint.setShadowLayer(SHADOW_RADIUS, 0, 0, Color.BLACK);
+
+                mSecondHandPaint.setAntiAlias(true);
+                mSecondHandPaint.setShadowLayer(SHADOW_RADIUS, 0, 0, Color.BLACK);
+            }
         }
 
         @Override
         public void onSurfaceChanged(SurfaceHolder holder, int format, int width, int height) {
             super.onSurfaceChanged(holder, format, width, height);
-            mWidth = width;
-            mHeight = height;
+
             /*
              * Find the coordinates of the center point on the screen.
              * Ignore the window insets so that, on round watches
              * with a "chin", the watch face is centered on the entire screen,
              * not just the usable portion.
              */
-            mCenterX = mWidth / 2f;
-            mCenterY = mHeight / 2f;
-
-            mScale = ((float) width) / (float) mBackgroundBitmap.getWidth();
-
-            mBackgroundBitmap = Bitmap.createScaledBitmap(mBackgroundBitmap,
-                    (int) (mBackgroundBitmap.getWidth() * mScale),
-                    (int) (mBackgroundBitmap.getHeight() * mScale), true);
+            mCenterX = width / 2f;
+            mCenterY = height / 2f;
 
             /*
-             * Since the height of the complications text does not change, we only have to
-             * recalculate when the surface changes.
+             * Calculate lengths of different hands based on watch screen size.
              */
-            mComplicationsY = (int) ((mHeight / 2) + (mComplicationPaint.getTextSize() / 2));
+            mSecondHandLength = (float) (mCenterX * 0.875);
+            mMinuteHandLength = (float) (mCenterX * 0.75);
+            mHourHandLength = (float) (mCenterX * 0.5);
 
-            // Calculate the lengths of the watch hands and store them in member variables.
-            mHourHandLength = mCenterX * 0.5f;
-            mMinuteHandLength = mCenterX * 0.7f;
-            mSecondHandLength = mCenterX * 0.9f;
+            /*
+             * Calculates location bounds for right and left circular complications. Please note,
+             * we are not demonstrating a long text complication in this watch face.
+             *
+             * We suggest using at least 1/4 of the screen width for circular (or squared)
+             * complications and 2/3 of the screen width for wide rectangular complications for
+             * better readability.
+             */
 
-            if (!mBurnInProtection || !mLowBitAmbient) {
-                initGrayBackgroundBitmap();
-            }
-        }
+            // For most Wear devices, width and height are the same, so we just chose one (width).
+            int sizeOfComplication = width / 4;
+            int midpointOfScreen = width / 2;
 
-        private void initGrayBackgroundBitmap() {
-            mGrayBackgroundBitmap = Bitmap.createBitmap(mBackgroundBitmap.getWidth(),
-                    mBackgroundBitmap.getHeight(), Bitmap.Config.ARGB_8888);
-            Canvas canvas = new Canvas(mGrayBackgroundBitmap);
-            Paint grayPaint = new Paint();
-            ColorMatrix colorMatrix = new ColorMatrix();
-            colorMatrix.setSaturation(0);
-            ColorMatrixColorFilter filter = new ColorMatrixColorFilter(colorMatrix);
-            grayPaint.setColorFilter(filter);
-            canvas.drawBitmap(mBackgroundBitmap, 0, 0, grayPaint);
+            int horizontalOffset = (midpointOfScreen - sizeOfComplication) / 2;
+            int verticalOffset = midpointOfScreen - (sizeOfComplication / 2);
+
+            Rect leftBounds =
+                    // Left, Top, Right, Bottom
+                    new Rect(
+                            horizontalOffset,
+                            verticalOffset,
+                            (horizontalOffset + sizeOfComplication),
+                            (verticalOffset + sizeOfComplication));
+
+            ComplicationDrawable leftComplicationDrawable =
+                    mComplicationDrawableSparseArray.get(LEFT_COMPLICATION_ID);
+            leftComplicationDrawable.setBounds(leftBounds);
+
+            Rect rightBounds =
+                    // Left, Top, Right, Bottom
+                    new Rect(
+                            (midpointOfScreen + horizontalOffset),
+                            verticalOffset,
+                            (midpointOfScreen + horizontalOffset + sizeOfComplication),
+                            (verticalOffset + sizeOfComplication));
+
+            ComplicationDrawable rightComplicationDrawable =
+                    mComplicationDrawableSparseArray.get(RIGHT_COMPLICATION_ID);
+            rightComplicationDrawable.setBounds(rightBounds);
         }
 
         @Override
@@ -427,78 +501,47 @@ public class ComplicationWatchFaceService extends CanvasWatchFaceService {
 
         private void drawComplications(Canvas canvas, long currentTimeMillis) {
             // TODO: Step 4, drawComplications()
-            ComplicationData complicationData;
+            int complicationId;
+            ComplicationDrawable complicationDrawable;
 
             for (int i = 0; i < COMPLICATION_IDS.length; i++) {
+                complicationId = COMPLICATION_IDS[i];
+                complicationDrawable = mComplicationDrawableSparseArray.get(complicationId);
 
-                complicationData = mActiveComplicationDataSparseArray.get(COMPLICATION_IDS[i]);
-
-                if ((complicationData != null)
-                        && (complicationData.isActive(currentTimeMillis))) {
-
-                    // Both Short Text and No Permission Types can be rendered with the same code.
-                    // No Permission will display "--" with an Intent to launch a permission prompt.
-                    // If you want to support more types, just add a "else if" below with your
-                    // rendering code inside.
-                    if (complicationData.getType() == ComplicationData.TYPE_SHORT_TEXT
-                            || complicationData.getType() == ComplicationData.TYPE_NO_PERMISSION) {
-
-                        ComplicationText mainText = complicationData.getShortText();
-                        ComplicationText subText = complicationData.getShortTitle();
-
-                        CharSequence complicationMessage =
-                                mainText.getText(getApplicationContext(), currentTimeMillis);
-
-                        /* In most cases you would want the subText (Title) under the
-                         * mainText (Text), but to keep it simple for the code lab, we are
-                         * concatenating them all on one line.
-                         */
-                        if (subText != null) {
-                            complicationMessage = TextUtils.concat(
-                                    complicationMessage,
-                                    " ",
-                                    subText.getText(getApplicationContext(), currentTimeMillis));
-                        }
-
-                        double textWidth =
-                                mComplicationPaint.measureText(
-                                        complicationMessage,
-                                        0,
-                                        complicationMessage.length());
-
-                        int complicationsX;
-
-                        if (COMPLICATION_IDS[i] == LEFT_DIAL_COMPLICATION) {
-                            complicationsX = (int) ((mWidth / 2) - textWidth) / 2;
-                        } else {
-                            // RIGHT_DIAL_COMPLICATION calculations
-                            int offset = (int) ((mWidth / 2) - textWidth) / 2;
-                            complicationsX = (mWidth / 2) + offset;
-                        }
-
-                        canvas.drawText(
-                                complicationMessage,
-                                0,
-                                complicationMessage.length(),
-                                complicationsX,
-                                mComplicationsY,
-                                mComplicationPaint);
-                    }
-                }
+                complicationDrawable.draw(canvas, currentTimeMillis);
             }
         }
 
         private void drawBackground(Canvas canvas) {
             if (mAmbient && (mLowBitAmbient || mBurnInProtection)) {
                 canvas.drawColor(Color.BLACK);
-            } else if (mAmbient) {
-                canvas.drawBitmap(mGrayBackgroundBitmap, 0, 0, mBackgroundPaint);
             } else {
-                canvas.drawBitmap(mBackgroundBitmap, 0, 0, mBackgroundPaint);
+                canvas.drawPaint(mBackgroundPaint);
             }
         }
 
         private void drawHands(Canvas canvas) {
+            /*
+             * Draw ticks. Usually you will want to bake this directly into the photo, but in
+             * cases where you want to allow users to select their own photos, this dynamically
+             * creates them on top of the photo.
+             */
+            float innerTickRadius = mCenterX - 10;
+            float outerTickRadius = mCenterX;
+            for (int tickIndex = 0; tickIndex < 12; tickIndex++) {
+                float tickRot = (float) (tickIndex * Math.PI * 2 / 12);
+                float innerX = (float) Math.sin(tickRot) * innerTickRadius;
+                float innerY = (float) -Math.cos(tickRot) * innerTickRadius;
+                float outerX = (float) Math.sin(tickRot) * outerTickRadius;
+                float outerY = (float) -Math.cos(tickRot) * outerTickRadius;
+                canvas.drawLine(
+                        mCenterX + innerX,
+                        mCenterY + innerY,
+                        mCenterX + outerX,
+                        mCenterY + outerY,
+                        mHourMinuteTicksHandPaint);
+            }
+
             /*
              * These calculations reflect the rotation in degrees per unit of time, e.g.,
              * 360 / 60 = 6 and 360 / 12 = 30.
@@ -512,33 +555,45 @@ public class ComplicationWatchFaceService extends CanvasWatchFaceService {
             final float hourHandOffset = mCalendar.get(Calendar.MINUTE) / 2f;
             final float hoursRotation = (mCalendar.get(Calendar.HOUR) * 30) + hourHandOffset;
 
-            // save the canvas state before we begin to rotate it
+            /*
+             * Saves the canvas state before we rotate it.
+             */
             canvas.save();
 
             canvas.rotate(hoursRotation, mCenterX, mCenterY);
-            drawHand(canvas, mHourHandLength);
+            canvas.drawLine(
+                    mCenterX,
+                    mCenterY - CENTER_GAP_AND_CIRCLE_RADIUS,
+                    mCenterX,
+                    mCenterY - mHourHandLength,
+                    mHourMinuteTicksHandPaint);
 
             canvas.rotate(minutesRotation - hoursRotation, mCenterX, mCenterY);
-            drawHand(canvas, mMinuteHandLength);
+            canvas.drawLine(
+                    mCenterX,
+                    mCenterY - CENTER_GAP_AND_CIRCLE_RADIUS,
+                    mCenterX,
+                    mCenterY - mMinuteHandLength,
+                    mHourMinuteTicksHandPaint);
 
             /*
-             * Make sure the "seconds" hand is drawn only when we are in interactive mode.
-             * Otherwise we only update the watch face once a minute.
+             * Ensure the "seconds" hand is drawn only when we are in interactive mode.
+             * Otherwise, we only update the watch face once a minute.
              */
             if (!mAmbient) {
                 canvas.rotate(secondsRotation - minutesRotation, mCenterX, mCenterY);
-                canvas.drawLine(mCenterX, mCenterY - HAND_END_CAP_RADIUS, mCenterX,
-                        mCenterY - mSecondHandLength, mHandPaint);
+                canvas.drawLine(
+                        mCenterX,
+                        mCenterY - CENTER_GAP_AND_CIRCLE_RADIUS,
+                        mCenterX,
+                        mCenterY - mSecondHandLength,
+                        mSecondHandPaint);
             }
-            canvas.drawCircle(mCenterX, mCenterY, HAND_END_CAP_RADIUS, mHandPaint);
-            // restore the canvas' original orientation.
-            canvas.restore();
-        }
+            canvas.drawCircle(
+                    mCenterX, mCenterY, CENTER_GAP_AND_CIRCLE_RADIUS, mHourMinuteTicksHandPaint);
 
-        private void drawHand(Canvas canvas, float handLength) {
-            canvas.drawRoundRect(mCenterX - HAND_END_CAP_RADIUS, mCenterY - handLength,
-                    mCenterX + HAND_END_CAP_RADIUS, mCenterY + HAND_END_CAP_RADIUS,
-                    HAND_END_CAP_RADIUS, HAND_END_CAP_RADIUS, mHandPaint);
+            /* Restore the canvas' original orientation. */
+            canvas.restore();
         }
 
         @Override
@@ -579,10 +634,16 @@ public class ComplicationWatchFaceService extends CanvasWatchFaceService {
             ComplicationWatchFaceService.this.unregisterReceiver(mTimeZoneReceiver);
         }
 
+        /**
+         * Starts/stops the {@link #mUpdateTimeHandler} timer based on the state of the watch face.
+         */
         private void updateTimer() {
-            mUpdateTimeHandler.removeMessages(R.id.message_update);
+            if (Log.isLoggable(TAG, Log.DEBUG)) {
+                Log.d(TAG, "updateTimer");
+            }
+            mUpdateTimeHandler.removeMessages(MSG_UPDATE_TIME);
             if (shouldTimerBeRunning()) {
-                mUpdateTimeHandler.sendEmptyMessage(R.id.message_update);
+                mUpdateTimeHandler.sendEmptyMessage(MSG_UPDATE_TIME);
             }
         }
 

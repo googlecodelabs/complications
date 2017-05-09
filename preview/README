@@ -10,10 +10,12 @@ necessary:
 
 allprojects {
     repositories {
+
         maven {
-            /* Reference the EAP maven repository location */
-            url new File(rootDir, "../../preview/libs/m2repository")
+            /* Reference the preview maven repository location */
+            url new File(rootDir, "./preview/libs/m2repository")
         }
+
         jcenter()
     }
 }
