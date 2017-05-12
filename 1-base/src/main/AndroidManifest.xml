@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  ~ Copyright (C) 2016 The Android Open Source Project
+  ~ Copyright (C) 2017 The Android Open Source Project
   ~
   ~ Licensed under the Apache License, Version 2.0 (the "License");
   ~ you may not use this file except in compliance with the License.
@@ -22,7 +22,11 @@
 
     <!-- Required to act as a custom watch face. -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+
     <!--  TODO: Step 2, receiveComplicationData -->
+    <!-- Required for complications to receive complication data and open the provider chooser. -->
+    <uses-permission
+        android:name="com.google.android.wearable.permission.RECEIVE_COMPLICATION_DATA" />
 
     <application
         android:allowBackup="true"
@@ -32,19 +36,30 @@
         android:theme="@android:style/Theme.DeviceDefault"
         tools:ignore="MissingApplicationIcon">
 
+        <meta-data
+            android:name="com.google.android.wearable.standalone"
+            android:value="true"/>
+        <meta-data
+            android:name="com.google.android.gms.version"
+            android:value="@integer/google_play_services_version"/>
+
+        <uses-library
+            android:name="com.google.android.wearable"
+            android:required="false"/>
+
         <service
             android:name=".ComplicationWatchFaceService"
-            android:label="@string/complication_watch_face_name"
+            android:label="@string/app_name"
             android:permission="android.permission.BIND_WALLPAPER" >
             <meta-data
                 android:name="android.service.wallpaper"
                 android:resource="@xml/watch_face" />
             <meta-data
                 android:name="com.google.android.wearable.watchface.preview"
-                android:resource="@drawable/preview_analog" />
+                android:resource="@drawable/preview_watch_face" />
             <meta-data
                 android:name="com.google.android.wearable.watchface.preview_circular"
-                android:resource="@drawable/preview_analog" />
+                android:resource="@drawable/preview_watch_face" />
 
             <meta-data
                 android:name="com.google.android.wearable.watchface.wearableConfigurationAction"
@@ -58,21 +73,21 @@
         </service>
 
         <!-- TODO: Step 3, addHelperActivity -->
+        <!--
+        To use ComplicationHelperActivity (Activity to handle permission requests for complications)
+        in the watch face, the Activity must be included here in the manifest file.
+        -->
+        <activity android:name="android.support.wearable.complications.ComplicationHelperActivity"/>
 
         <activity
-            android:name=".WatchFaceConfigActivity"
-            android:label="@string/complication_watch_face_name">
+            android:name=".ComplicationConfigActivity"
+            android:label="@string/app_name">
             <intent-filter>
                 <action android:name="com.example.android.wearable.watchface.CONFIG_COMPLICATION"/>
                 <category android:name="com.google.android.wearable.watchface.category.WEARABLE_CONFIGURATION"/>
                 <category android:name="android.intent.category.DEFAULT"/>
             </intent-filter>
         </activity>
-
-        <meta-data
-            android:name="com.google.android.gms.version"
-            android:value="@integer/google_play_services_version" />
-
     </application>
 
 </manifest>
