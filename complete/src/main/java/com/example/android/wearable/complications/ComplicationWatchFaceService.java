@@ -46,6 +46,7 @@ public class ComplicationWatchFaceService extends CanvasWatchFaceService {
 
     private static final String TAG = "ComplicationWatchFace";
 
+    // TODO: Step 2, intro 1
     private static final int LEFT_COMPLICATION_ID = 0;
     private static final int RIGHT_COMPLICATION_ID = 1;
 
@@ -69,6 +70,7 @@ public class ComplicationWatchFaceService extends CanvasWatchFaceService {
 
     // Used by {@link ComplicationConfigActivity} to retrieve id for complication locations and
     // to check if complication location is supported.
+    // TODO: Step 3, expose complication information, part 1
     static int getComplicationId(
             ComplicationConfigActivity.ComplicationLocation complicationLocation) {
         // Add any other supported locations here you would like to support. In our case, we are
@@ -83,8 +85,15 @@ public class ComplicationWatchFaceService extends CanvasWatchFaceService {
         }
     }
 
+    // Used by {@link ComplicationConfigActivity} to retrieve all complication ids.
+    // TODO: Step 3, expose complication information, part 2
+    static int[] getComplicationIds() {
+        return COMPLICATION_IDS;
+    }
+
     // Used by {@link ComplicationConfigActivity} to retrieve complication types supported by
     // location.
+    // TODO: Step 3, expose complication information, part 3
     static int[] getSupportedComplicationTypes(
             ComplicationConfigActivity.ComplicationLocation complicationLocation) {
         // Add any other supported locations here.
@@ -146,6 +155,8 @@ public class ComplicationWatchFaceService extends CanvasWatchFaceService {
          */
         private boolean mBurnInProtection;
 
+
+        // TODO: Step 2, intro 2
         /* Maps active complication ids to the data for that complication. Note: Data will only be
          * present if the user has chosen a provider via the settings activity for the watch face.
          */
@@ -198,6 +209,7 @@ public class ComplicationWatchFaceService extends CanvasWatchFaceService {
 
             initializeBackground();
 
+            // TODO: Step 2, intro 3
             initializeComplications();
 
             initializeHands();
@@ -208,6 +220,7 @@ public class ComplicationWatchFaceService extends CanvasWatchFaceService {
             mBackgroundPaint.setColor(Color.BLACK);
         }
 
+        // TODO: Step 2, initializeComplications()
         private void initializeComplications() {
             Log.d(TAG, "initializeComplications()");
 
@@ -274,9 +287,7 @@ public class ComplicationWatchFaceService extends CanvasWatchFaceService {
             }
         }
 
-        /*
-         * Called when there is updated data for a complication id.
-         */
+        // TODO: Step 2, onComplicationDataUpdate()
         @Override
         public void onComplicationDataUpdate(
                 int complicationId, ComplicationData complicationData) {
@@ -289,7 +300,6 @@ public class ComplicationWatchFaceService extends CanvasWatchFaceService {
             ComplicationDrawable complicationDrawable =
                     mComplicationDrawableSparseArray.get(complicationId);
             complicationDrawable.setComplicationData(complicationData);
-
 
             invalidate();
         }
@@ -394,6 +404,7 @@ public class ComplicationWatchFaceService extends CanvasWatchFaceService {
 
             updateWatchHandStyles();
 
+            // TODO: Step 2, ambient
             // Update drawable complications' ambient state.
             // Note: ComplicationDrawable handles switching between active/ambient colors, we just
             // have to inform it to enter ambient mode.
@@ -456,6 +467,7 @@ public class ComplicationWatchFaceService extends CanvasWatchFaceService {
              */
 
             // For most Wear devices, width and height are the same, so we just chose one (width).
+            // TODO: Step 2, calculating ComplicationDrawable locations
             int sizeOfComplication = width / 4;
             int midpointOfScreen = width / 2;
 
