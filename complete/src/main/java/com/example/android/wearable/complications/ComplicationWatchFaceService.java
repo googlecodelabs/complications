@@ -181,10 +181,6 @@ public class ComplicationWatchFaceService extends CanvasWatchFaceService {
                 new Handler() {
                     @Override
                     public void handleMessage(Message message) {
-
-                        if (Log.isLoggable(TAG, Log.DEBUG)) {
-                            Log.d(TAG, "updating time");
-                        }
                         invalidate();
                         if (shouldTimerBeRunning()) {
                             long timeMs = System.currentTimeMillis();
@@ -650,9 +646,6 @@ public class ComplicationWatchFaceService extends CanvasWatchFaceService {
          * Starts/stops the {@link #mUpdateTimeHandler} timer based on the state of the watch face.
          */
         private void updateTimer() {
-            if (Log.isLoggable(TAG, Log.DEBUG)) {
-                Log.d(TAG, "updateTimer");
-            }
             mUpdateTimeHandler.removeMessages(MSG_UPDATE_TIME);
             if (shouldTimerBeRunning()) {
                 mUpdateTimeHandler.sendEmptyMessage(MSG_UPDATE_TIME);
