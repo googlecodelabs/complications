@@ -73,22 +73,13 @@ public class ComplicationWatchFaceService extends CanvasWatchFaceService {
     // TODO: Step 3, expose complication information, part 1
     static int getComplicationId(
             ComplicationConfigActivity.ComplicationLocation complicationLocation) {
-        // Add any other supported locations here you would like to support. In our case, we are
-        // only supporting a left and right complication.
-        switch (complicationLocation) {
-            case LEFT:
-                return LEFT_COMPLICATION_ID;
-            case RIGHT:
-                return RIGHT_COMPLICATION_ID;
-            default:
-                return -1;
-        }
+        return -1;
     }
 
     // Used by {@link ComplicationConfigActivity} to retrieve all complication ids.
     // TODO: Step 3, expose complication information, part 2
     static int[] getComplicationIds() {
-        return COMPLICATION_IDS;
+        return new int[] {};
     }
 
     // Used by {@link ComplicationConfigActivity} to retrieve complication types supported by
@@ -96,15 +87,7 @@ public class ComplicationWatchFaceService extends CanvasWatchFaceService {
     // TODO: Step 3, expose complication information, part 3
     static int[] getSupportedComplicationTypes(
             ComplicationConfigActivity.ComplicationLocation complicationLocation) {
-        // Add any other supported locations here.
-        switch (complicationLocation) {
-            case LEFT:
-                return COMPLICATION_SUPPORTED_TYPES[0];
-            case RIGHT:
-                return COMPLICATION_SUPPORTED_TYPES[1];
-            default:
-                return new int[] {};
-        }
+        return new int[] {};
     }
 
     /*
@@ -219,30 +202,7 @@ public class ComplicationWatchFaceService extends CanvasWatchFaceService {
 
         // TODO: Step 2, initializeComplications()
         private void initializeComplications() {
-            Log.d(TAG, "initializeComplications()");
 
-            mActiveComplicationDataSparseArray = new SparseArray<>(COMPLICATION_IDS.length);
-
-            // Creates a ComplicationDrawable for each location where the user can render a
-            // complication on the watch face. In this watch face, we only create left and right,
-            // but you could add many more.
-            // All styles for the complications are defined in
-            // drawable/custom_complication_styles.xml.
-            ComplicationDrawable leftComplicationDrawable =
-                    (ComplicationDrawable) getDrawable(R.drawable.custom_complication_styles);
-            leftComplicationDrawable.setContext(getApplicationContext());
-
-            ComplicationDrawable rightComplicationDrawable =
-                    (ComplicationDrawable) getDrawable(R.drawable.custom_complication_styles);
-            rightComplicationDrawable.setContext(getApplicationContext());
-
-            // Adds new complications to a SparseArray to simplify setting styles and ambient
-            // properties for all complications, i.e., iterate over them all.
-            mComplicationDrawableSparseArray = new SparseArray<>(COMPLICATION_IDS.length);
-            mComplicationDrawableSparseArray.put(LEFT_COMPLICATION_ID, leftComplicationDrawable);
-            mComplicationDrawableSparseArray.put(RIGHT_COMPLICATION_ID, rightComplicationDrawable);
-
-            setActiveComplications(COMPLICATION_IDS);
         }
 
         private void initializeHands() {
@@ -285,34 +245,12 @@ public class ComplicationWatchFaceService extends CanvasWatchFaceService {
         }
 
         // TODO: Step 2, onComplicationDataUpdate()
-        @Override
-        public void onComplicationDataUpdate(
-                int complicationId, ComplicationData complicationData) {
-            Log.d(TAG, "onComplicationDataUpdate() id: " + complicationId);
 
-            // Adds/updates active complication data in the array.
-            mActiveComplicationDataSparseArray.put(complicationId, complicationData);
 
-            // Updates correct ComplicationDrawable with updated data.
-            ComplicationDrawable complicationDrawable =
-                    mComplicationDrawableSparseArray.get(complicationId);
-            complicationDrawable.setComplicationData(complicationData);
-
-            invalidate();
-        }
 
         @Override
         public void onTapCommand(int tapType, int x, int y, long eventTime) {
             // TODO: Step 5, OnTapCommand()
-            Log.d(TAG, "OnTapCommand()");
-            switch (tapType) {
-                case TAP_TYPE_TAP:
-                    int tappedComplicationId = getTappedComplicationId(x, y);
-                    if (tappedComplicationId != -1) {
-                        onComplicationTap(tappedComplicationId);
-                    }
-                    break;
-            }
         }
 
         /*
@@ -354,37 +292,6 @@ public class ComplicationWatchFaceService extends CanvasWatchFaceService {
         private void onComplicationTap(int complicationId) {
             // TODO: Step 5, onComplicationTap()
             Log.d(TAG, "onComplicationTap()");
-
-            ComplicationData complicationData =
-                    mActiveComplicationDataSparseArray.get(complicationId);
-
-            if (complicationData != null) {
-
-                if (complicationData.getTapAction() != null) {
-                    try {
-                        complicationData.getTapAction().send();
-                    } catch (PendingIntent.CanceledException e) {
-                        Log.e(TAG, "onComplicationTap() tap action error: " + e);
-                    }
-
-                } else if (complicationData.getType() == ComplicationData.TYPE_NO_PERMISSION) {
-
-                    // Watch face does not have permission to receive complication data, so launch
-                    // permission request.
-                    ComponentName componentName =
-                            new ComponentName(
-                                    getApplicationContext(), ComplicationWatchFaceService.class);
-
-                    Intent permissionRequestIntent =
-                            ComplicationHelperActivity.createPermissionRequestHelperIntent(
-                                    getApplicationContext(), componentName);
-
-                    startActivity(permissionRequestIntent);
-                }
-
-            } else {
-                Log.d(TAG, "No PendingIntent for complication " + complicationId + ".");
-            }
         }
 
         @Override
@@ -402,15 +309,11 @@ public class ComplicationWatchFaceService extends CanvasWatchFaceService {
             updateWatchHandStyles();
 
             // TODO: Step 2, ambient
-            // Update drawable complications' ambient state.
-            // Note: ComplicationDrawable handles switching between active/ambient colors, we just
-            // have to inform it to enter ambient mode.
-            ComplicationDrawable complicationDrawable;
 
-            for (int i = 0; i < COMPLICATION_IDS.length; i++) {
-                complicationDrawable = mComplicationDrawableSparseArray.get(COMPLICATION_IDS[i]);
-                complicationDrawable.setInAmbientMode(mAmbient);
-            }
+
+
+
+
 
             // Check and trigger whether or not timer should be running (only in active mode).
             updateTimer();
@@ -465,35 +368,7 @@ public class ComplicationWatchFaceService extends CanvasWatchFaceService {
 
             // For most Wear devices, width and height are the same, so we just chose one (width).
             // TODO: Step 2, calculating ComplicationDrawable locations
-            int sizeOfComplication = width / 4;
-            int midpointOfScreen = width / 2;
 
-            int horizontalOffset = (midpointOfScreen - sizeOfComplication) / 2;
-            int verticalOffset = midpointOfScreen - (sizeOfComplication / 2);
-
-            Rect leftBounds =
-                    // Left, Top, Right, Bottom
-                    new Rect(
-                            horizontalOffset,
-                            verticalOffset,
-                            (horizontalOffset + sizeOfComplication),
-                            (verticalOffset + sizeOfComplication));
-
-            ComplicationDrawable leftComplicationDrawable =
-                    mComplicationDrawableSparseArray.get(LEFT_COMPLICATION_ID);
-            leftComplicationDrawable.setBounds(leftBounds);
-
-            Rect rightBounds =
-                    // Left, Top, Right, Bottom
-                    new Rect(
-                            (midpointOfScreen + horizontalOffset),
-                            verticalOffset,
-                            (midpointOfScreen + horizontalOffset + sizeOfComplication),
-                            (verticalOffset + sizeOfComplication));
-
-            ComplicationDrawable rightComplicationDrawable =
-                    mComplicationDrawableSparseArray.get(RIGHT_COMPLICATION_ID);
-            rightComplicationDrawable.setBounds(rightBounds);
         }
 
         @Override
@@ -510,15 +385,6 @@ public class ComplicationWatchFaceService extends CanvasWatchFaceService {
 
         private void drawComplications(Canvas canvas, long currentTimeMillis) {
             // TODO: Step 4, drawComplications()
-            int complicationId;
-            ComplicationDrawable complicationDrawable;
-
-            for (int i = 0; i < COMPLICATION_IDS.length; i++) {
-                complicationId = COMPLICATION_IDS[i];
-                complicationDrawable = mComplicationDrawableSparseArray.get(complicationId);
-
-                complicationDrawable.draw(canvas, currentTimeMillis);
-            }
         }
 
         private void drawBackground(Canvas canvas) {

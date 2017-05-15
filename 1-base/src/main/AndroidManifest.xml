@@ -25,8 +25,7 @@
 
     <!--  TODO: Step 2, receiveComplicationData -->
     <!-- Required for complications to receive complication data and open the provider chooser. -->
-    <uses-permission
-        android:name="com.google.android.wearable.permission.RECEIVE_COMPLICATION_DATA" />
+
 
     <application
         android:allowBackup="true"
@@ -73,15 +72,6 @@
         </service>
 
         <!-- TODO: Step 3, addConfigActivity -->
-        <activity
-            android:name=".ComplicationConfigActivity"
-            android:label="@string/app_name">
-            <intent-filter>
-                <action android:name="com.example.android.wearable.watchface.CONFIG_COMPLICATION"/>
-                <category android:name="com.google.android.wearable.watchface.category.WEARABLE_CONFIGURATION"/>
-                <category android:name="android.intent.category.DEFAULT"/>
-            </intent-filter>
-        </activity>
     </application>
 
 </manifest>
