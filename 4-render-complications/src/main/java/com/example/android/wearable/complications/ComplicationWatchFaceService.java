@@ -15,9 +15,7 @@
  */
 package com.example.android.wearable.complications;
 
-import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -29,7 +27,6 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.support.wearable.complications.ComplicationData;
-import android.support.wearable.complications.ComplicationHelperActivity;
 import android.support.wearable.complications.rendering.ComplicationDrawable;
 import android.support.wearable.watchface.CanvasWatchFaceService;
 import android.support.wearable.watchface.WatchFaceStyle;
@@ -73,8 +70,6 @@ public class ComplicationWatchFaceService extends CanvasWatchFaceService {
     // TODO: Step 3, expose complication information, part 1
     static int getComplicationId(
             ComplicationConfigActivity.ComplicationLocation complicationLocation) {
-        // Add any other supported locations here you would like to support. In our case, we are
-        // only supporting a left and right complication.
         switch (complicationLocation) {
             case LEFT:
                 return LEFT_COMPLICATION_ID;
@@ -96,7 +91,7 @@ public class ComplicationWatchFaceService extends CanvasWatchFaceService {
     // TODO: Step 3, expose complication information, part 3
     static int[] getSupportedComplicationTypes(
             ComplicationConfigActivity.ComplicationLocation complicationLocation) {
-        // Add any other supported locations here.
+
         switch (complicationLocation) {
             case LEFT:
                 return COMPLICATION_SUPPORTED_TYPES[0];
@@ -223,11 +218,6 @@ public class ComplicationWatchFaceService extends CanvasWatchFaceService {
 
             mActiveComplicationDataSparseArray = new SparseArray<>(COMPLICATION_IDS.length);
 
-            // Creates a ComplicationDrawable for each location where the user can render a
-            // complication on the watch face. In this watch face, we only create left and right,
-            // but you could add many more.
-            // All styles for the complications are defined in
-            // drawable/custom_complication_styles.xml.
             ComplicationDrawable leftComplicationDrawable =
                     (ComplicationDrawable) getDrawable(R.drawable.custom_complication_styles);
             leftComplicationDrawable.setContext(getApplicationContext());
@@ -236,14 +226,13 @@ public class ComplicationWatchFaceService extends CanvasWatchFaceService {
                     (ComplicationDrawable) getDrawable(R.drawable.custom_complication_styles);
             rightComplicationDrawable.setContext(getApplicationContext());
 
-            // Adds new complications to a SparseArray to simplify setting styles and ambient
-            // properties for all complications, i.e., iterate over them all.
             mComplicationDrawableSparseArray = new SparseArray<>(COMPLICATION_IDS.length);
             mComplicationDrawableSparseArray.put(LEFT_COMPLICATION_ID, leftComplicationDrawable);
             mComplicationDrawableSparseArray.put(RIGHT_COMPLICATION_ID, rightComplicationDrawable);
 
             setActiveComplications(COMPLICATION_IDS);
         }
+
 
         private void initializeHands() {
             mHourMinuteTicksHandPaint = new Paint();
@@ -301,18 +290,12 @@ public class ComplicationWatchFaceService extends CanvasWatchFaceService {
             invalidate();
         }
 
+
+
+
         @Override
         public void onTapCommand(int tapType, int x, int y, long eventTime) {
             // TODO: Step 5, OnTapCommand()
-            Log.d(TAG, "OnTapCommand()");
-            switch (tapType) {
-                case TAP_TYPE_TAP:
-                    int tappedComplicationId = getTappedComplicationId(x, y);
-                    if (tappedComplicationId != -1) {
-                        onComplicationTap(tappedComplicationId);
-                    }
-                    break;
-            }
         }
 
         /*
@@ -354,37 +337,6 @@ public class ComplicationWatchFaceService extends CanvasWatchFaceService {
         private void onComplicationTap(int complicationId) {
             // TODO: Step 5, onComplicationTap()
             Log.d(TAG, "onComplicationTap()");
-
-            ComplicationData complicationData =
-                    mActiveComplicationDataSparseArray.get(complicationId);
-
-            if (complicationData != null) {
-
-                if (complicationData.getTapAction() != null) {
-                    try {
-                        complicationData.getTapAction().send();
-                    } catch (PendingIntent.CanceledException e) {
-                        Log.e(TAG, "onComplicationTap() tap action error: " + e);
-                    }
-
-                } else if (complicationData.getType() == ComplicationData.TYPE_NO_PERMISSION) {
-
-                    // Watch face does not have permission to receive complication data, so launch
-                    // permission request.
-                    ComponentName componentName =
-                            new ComponentName(
-                                    getApplicationContext(), ComplicationWatchFaceService.class);
-
-                    Intent permissionRequestIntent =
-                            ComplicationHelperActivity.createPermissionRequestHelperIntent(
-                                    getApplicationContext(), componentName);
-
-                    startActivity(permissionRequestIntent);
-                }
-
-            } else {
-                Log.d(TAG, "No PendingIntent for complication " + complicationId + ".");
-            }
         }
 
         @Override
@@ -402,9 +354,6 @@ public class ComplicationWatchFaceService extends CanvasWatchFaceService {
             updateWatchHandStyles();
 
             // TODO: Step 2, ambient
-            // Update drawable complications' ambient state.
-            // Note: ComplicationDrawable handles switching between active/ambient colors, we just
-            // have to inform it to enter ambient mode.
             ComplicationDrawable complicationDrawable;
 
             for (int i = 0; i < COMPLICATION_IDS.length; i++) {

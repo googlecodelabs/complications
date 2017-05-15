@@ -111,7 +111,6 @@ public class ComplicationConfigActivity extends Activity implements View.OnClick
         mRightComplicationBackground.setVisibility(View.INVISIBLE);
 
         // TODO: Step 3, initialize 2
-        // Initialization of code to retrieve active complication data for the watch face.
         mProviderInfoRetriever =
                 new ProviderInfoRetriever(getApplicationContext(), Executors.newCachedThreadPool());
         mProviderInfoRetriever.init();
@@ -124,7 +123,6 @@ public class ComplicationConfigActivity extends Activity implements View.OnClick
         super.onDestroy();
 
         // TODO: Step 3, release
-        // Required to release retriever for active complication data.
         mProviderInfoRetriever.release();
     }
 
@@ -188,6 +186,7 @@ public class ComplicationConfigActivity extends Activity implements View.OnClick
         }
     }
 
+
     public void updateComplicationViews(
             int watchFaceComplicationId, ComplicationProviderInfo complicationProviderInfo) {
         Log.d(TAG, "updateComplicationViews(): id: " + watchFaceComplicationId);
@@ -230,5 +229,6 @@ public class ComplicationConfigActivity extends Activity implements View.OnClick
                 updateComplicationViews(mSelectedComplicationId, complicationProviderInfo);
             }
         }
+
     }
 }
