@@ -72,6 +72,9 @@
             </intent-filter>
         </service>
 
+        <!-- TODO: Step 3, addWearableSupportHelperActivity -->
+        <activity android:name="android.support.wearable.complications.ComplicationHelperActivity"/>
+
         <!-- TODO: Step 3, addConfigActivity -->
         <activity
             android:name=".ComplicationConfigActivity"

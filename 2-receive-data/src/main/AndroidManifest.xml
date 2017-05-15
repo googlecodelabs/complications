@@ -72,6 +72,9 @@
             </intent-filter>
         </service>
 
+        <!-- TODO: Step 3, addWearableSupportHelperActivity -->
+
+
         <!-- TODO: Step 3, addConfigActivity -->
     </application>
 
