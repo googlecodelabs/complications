@@ -202,7 +202,8 @@ public class ComplicationWatchFaceService extends CanvasWatchFaceService {
 
         // TODO: Step 2, initializeComplications()
         private void initializeComplications() {
-
+            mActiveComplicationDataSparseArray = new SparseArray<>(COMPLICATION_IDS.length);
+            mComplicationDrawableSparseArray = new SparseArray<>(COMPLICATION_IDS.length);
         }
 
         private void initializeHands() {
@@ -239,8 +240,11 @@ public class ComplicationWatchFaceService extends CanvasWatchFaceService {
             for (int i = 0; i < COMPLICATION_IDS.length; i++) {
                 complicationDrawable = mComplicationDrawableSparseArray.get(COMPLICATION_IDS[i]);
 
-                complicationDrawable.setLowBitAmbient(mLowBitAmbient);
-                complicationDrawable.setBurnInProtection(mBurnInProtection);
+                if(complicationDrawable != null) {
+                    complicationDrawable.setLowBitAmbient(mLowBitAmbient);
+                    complicationDrawable.setBurnInProtection(mBurnInProtection);
+                }
+
             }
         }
 
